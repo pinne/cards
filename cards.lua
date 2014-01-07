@@ -3,6 +3,17 @@
 require "lunit"
 module("cards", lunit.testcase, package.seeall)
 
+local ace_high       = { "AH", "TS", "9H", "5C", "3C" }
+local ace_high2      = { "AC", "TH", "9D", "5S", "3D" }
+local pair           = { "4H", "8C", "KS", "4C", "3C" }
+local two_pairs      = { "4H", "KC", "KS", "4C", "3C" }
+local three          = { "4H", "8C", "KS", "4C", "4S" }
+local straight       = { "AH", "5S", "4D", "3C", "2H" }
+local full_house     = { "AH", "AC", "AS", "4H", "4C" }
+local four           = { "2H", "2D", "KS", "2C", "2S" }
+local straight_flush = { "AH", "5H", "4H", "3H", "2H" }
+local royal          = { "AH", "KH", "TH", "QH", "JH" }
+
 local Card = {}
 function Card:new(suit, value)
     local o = {}
