@@ -23,9 +23,26 @@ local Hand = {}
 function Hand:new()
     local o = {}
     o.cards = {}
-    setmetatable(o, self)
+    o.rank = 1
+    o.hidden = 1
+    --setmetatable(o, self)
+    setmetatable(o, Hand.mt)
     self.__index = self
     return o
+end
+
+Hand.mt = { __index = Hand }
+
+Hand.mt.__lt = function(a, b)
+    return (a:score() < b:score())
+end
+
+Hand.mt.__le = function(a, b)
+    return (a:score() <= b:score())
+end
+
+Hand.mt.__eq = function(a, b)
+    return (a:score() == b:score())
 end
 
 function Hand:fill()
@@ -74,35 +91,67 @@ function Hand:pick(str)
     return nil
 end
 
-function Hand:identify()
+function Hand:refresh_rank()
     if is_royal(self) then
-        return "royal straight flush"
+        self.rank = 10
+    elseif is_straight_flush(self) then
+        self.rank = 9
+    elseif is_four(self) then
+        self.rank = 8
+    elseif is_fullhouse(self) then
+        self.rank = 7
+    elseif is_flush(self) then
+        self.rank = 6
+    elseif is_straight(self) then
+        self.rank = 5
+    elseif is_three(self) then
+        self.rank = 4
+    elseif is_twopairs(self) then
+        self.rank = 3
+    elseif is_pair(self) then
+        self.rank = 2
+    else
+        self.rank = 1
     end
-    if is_straight_flush(self) then
-        return "straight flush"
+end
+
+function Hand:identify()
+    local names = {
+        "high",
+        "pairs",
+        "two pairs",
+        "three of a kind",
+        "straight",
+        "flush",
+        "full house",
+        "four of a kind",
+        "straight flush",
+        "royal straight flush",
+    }
+    local vnames = { "A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K" }
+    self:refresh_rank()
+    local val = 2
+    if self.rank == 1 then
+        for i,card in ipairs(self.cards) do
+            if card.value > val then
+                val = card.value
+            elseif card.value == 1 then
+                return vnames[1] .. " high"
+            end
+        end
+        names[1] = vnames[val] .. " high"
     end
-    if is_four(self) then
-        return "four of a kind"
+    return names[self.rank]
+end
+
+function Hand:score()
+    self:refresh_rank()
+    local mul = { 4096, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 }
+    local score = 0
+    for i,card in ipairs(self.cards) do
+        score = score + mul[card.value]
     end
-    if is_fullhouse(self) then
-        return "full house"
-    end
-    if is_flush(self) then
-        return "flush"
-    end
-    if is_straight(self) then
-        return "straight"
-    end
-    if is_three(self) then
-        return "three of a kind"
-    end
-    if is_twopairs(self) then
-        return "two pairs"
-    end
-    if is_pair(self) then
-        return "pairs"
-    end
-    return "high"
+    return score + self.rank * 4096
 end
 -- class Hand
 
@@ -407,5 +456,52 @@ function test_high()
     for i,name in ipairs({ "AH", "TS", "9H", "4C", "3C" }) do
         p1:push(deck:pick(name))
     end
-    assert_equal("high", p1:identify())
+    assert_equal("A high", p1:identify())
+end
+
+function test_score()
+    local deck = Hand:new()
+    deck:fill()
+    local p1 = Hand:new()
+    for i,name in ipairs({ "AH", "2S", "3H", "4C", "6C" }) do
+        p1:push(deck:pick(name))
+    end
+    local p2 = Hand:new()
+    for i,name in ipairs({ "KC", "TD", "QC", "JD", "8S" }) do
+        p2:push(deck:pick(name))
+    end
+    assert(p1 > p2)
+    assert(p2 < p1)
+end
+
+function test_winner()
+    local deck = Hand:new()
+    deck:fill()
+    local p1 = Hand:new()
+    for i,name in ipairs(ace_high) do
+        p1:push(deck:pick(name))
+    end
+    local p2 = Hand:new()
+    for i,name in ipairs(four) do
+        p2:push(deck:pick(name))
+    end
+    assert(p2 > p1)
+    assert_false(p2 < p1)
+    assert_false(p2 == p1)
+end
+
+function test_equal()
+    local deck = Hand:new()
+    deck:fill()
+    local p1 = Hand:new()
+    for i,name in ipairs(ace_high) do
+        p1:push(deck:pick(name))
+    end
+    local p2 = Hand:new()
+    for i,name in ipairs(ace_high2) do
+        p2:push(deck:pick(name))
+    end
+    assert(p1 == p2)
+    assert_false(p1 < p2)
+    assert_false(p1 > p2)
 end
